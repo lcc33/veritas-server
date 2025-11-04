@@ -1,52 +1,33 @@
-import os
-from dotenv import load_dotenv
-from fastapi import Depends, FastAPI
-from pydantic import BaseModel
-from ai.gemini import Gemini
-from auth.dependencies import get_user_identifier
-from auth.throttling import apply_rate_limit
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from core.config import settings
 
+# Import routers correctly - use absolute imports
+from api.endpoints.health import router as health_router
+from api.endpoints.analyze import router as analyze_router
 
-# --- App Initialization ---
-app = FastAPI()
-load_dotenv()
+app = FastAPI(
+    title=settings.app_name,
+    description="Veritas Backend - AI-Powered Fact Checking API", 
+    version="1.0.0"
+)
 
-# --- AI Configuration ---
-def load_system_prompt():
-    try:
-        with open("prompts/system_prompt.md", "r") as f:
-            return f.read()
-    except FileNotFoundError:
-        return None
-
-
-system_prompt = load_system_prompt()
-gemini_api_key = os.getenv("GEMINI_API_KEY")
-# gemini_api_key = "AIzaSyCn0quUIeW5q2TFhSCksBZCowJpKb4WFyU"
-
-if not gemini_api_key:
-    raise ValueError("GEMINI_API_KEY environment variable not set.")
-
-ai_platform = Gemini(api_key=gemini_api_key, system_prompt=system_prompt)
-
-
-# --- Pydantic Models ---
-class ChatRequest(BaseModel):
-    prompt: str
-
-
-class ChatResponse(BaseModel):
-    response: str
-
-
-# --- API Endpoints ---
-@app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, user_id: str = Depends(get_user_identifier)):
-    apply_rate_limit(user_id)
-    response_text = ai_platform.chat(request.prompt)
-    return ChatResponse(response=response_text)
-
+origins = [
+    "http://localhost:3000",
+    "https://veritas-beryl.vercel.app/",
+]
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+ 
+app.include_router(health_router, prefix="/api", tags=["health"])
+app.include_router(analyze_router, prefix="/api", tags=["analysis"])
 
 @app.get("/")
 async def root():
-    return {"message": "API is running"}
+    return {"message": "Veritas Backend API", "version": "1.0.0"}
