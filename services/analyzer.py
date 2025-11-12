@@ -147,7 +147,7 @@ class Analyzer:
         
         # Simple heuristic-based fallback
         claim_lower = claim.lower()
-        controversial_terms = ['cure', 'miracle', 'conspiracy', 'hidden truth', 'they dont want you to know']
+        controversial_terms = ['cure', 'miracle', 'conspiracy', 'hidden truth', 'they do not want you to know']
         
         if any(term in claim_lower for term in controversial_terms):
             verdict = Verdict.DISPUTED
